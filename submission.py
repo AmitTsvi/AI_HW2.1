@@ -12,8 +12,28 @@ def heuristic(state: GameState, player_index: int) -> float:
     state.snakes array as well.
     :return:
     """
-    # Insert your code here...
-    pass
+    if not state.snakes[player_index].alive or len(state.fruits_locations) == 0:
+        return state.snakes[player_index].length
+
+    head = state.snakes[player_index].head
+    tail = state.snakes[player_index].tail_position
+    borders = [(state.board_size.height, head[1]), (head[0], state.board_size.width),
+               (head[0], 0), (0, head[1])]
+    remaining_turns = state.game_duration_in_turns - state.turn_number + 1  # +1 to prevent divide by zero
+    dist = lambda snake, fruit: ((snake[0] - fruit[0])**2 + (snake[1] - fruit[1])**2)**0.5
+    dist_to_closest_fruit = min([dist(head, s) for s in state.fruits_locations])
+    dist_to_closest_border = min([dist(head, border) for border in borders])
+    num_of_possible_fruits = len([dist(head, s) < remaining_turns for s in state.fruits_locations])
+    board_area = state.board_size.height * state.board_size.width
+    dist_to_closest_opp = min([dist(tail, s.head) - dist(head, s.head) for s in state.snakes if s.index != player_index]
+                              + [board_area])
+    stay_straight = sum([dist(head, s) for s in state.snakes[player_index].position])
+    return state.snakes[player_index].length + \
+           2*(1 - dist_to_closest_fruit/board_area) + \
+           (1 - remaining_turns/state.game_duration_in_turns)*(num_of_possible_fruits / len(state.fruits_locations)) + \
+           (1 - remaining_turns/state.game_duration_in_turns)*(dist_to_closest_opp / board_area) + \
+           max((state.snakes[player_index].length/remaining_turns - 0.2), 0)*stay_straight + \
+           0.2*dist_to_closest_border/board_area
 
 
 class MinimaxAgent(Player):
