@@ -15,25 +15,30 @@ def heuristic(state: GameState, player_index: int) -> float:
     if not state.snakes[player_index].alive or len(state.fruits_locations) == 0:
         return state.snakes[player_index].length
 
+    dist = lambda snake, fruit: ((snake[0] - fruit[0]) ** 2 + (snake[1] - fruit[1]) ** 2) ** 0.5
+    length = state.snakes[player_index].length
     head = state.snakes[player_index].head
     tail = state.snakes[player_index].tail_position
-    borders = [(state.board_size.height, head[1]), (head[0], state.board_size.width),
-               (head[0], 0), (0, head[1])]
+    width = state.board_size.width
+    height = state.board_size.height
+    area = state.board_size.height * state.board_size.width
+    close_borders = [(height-1, head[1]), (head[0], width-1), (head[0], 0), (0, head[1])]
     remaining_turns = state.game_duration_in_turns - state.turn_number + 1  # +1 to prevent divide by zero
-    dist = lambda snake, fruit: ((snake[0] - fruit[0])**2 + (snake[1] - fruit[1])**2)**0.5
-    dist_to_closest_fruit = min([dist(head, s) for s in state.fruits_locations])
-    dist_to_closest_border = min([dist(head, border) for border in borders])
-    num_of_possible_fruits = len([dist(head, s) < remaining_turns for s in state.fruits_locations])
-    board_area = state.board_size.height * state.board_size.width
-    dist_to_closest_opp = min([dist(tail, s.head) - dist(head, s.head) for s in state.snakes if s.index != player_index]
-                              + [board_area])
-    stay_straight = sum([dist(head, s) for s in state.snakes[player_index].position])
-    return state.snakes[player_index].length + \
-           2*(1 - dist_to_closest_fruit/board_area) + \
-           (1 - remaining_turns/state.game_duration_in_turns)*(num_of_possible_fruits / len(state.fruits_locations)) + \
-           (1 - remaining_turns/state.game_duration_in_turns)*(dist_to_closest_opp / board_area) + \
-           max((state.snakes[player_index].length/remaining_turns - 0.2), 0)*stay_straight + \
-           0.2*dist_to_closest_border/board_area
+    total_turns = state.game_duration_in_turns
+    total_fruits = len(state.fruits_locations)
+
+    dist_to_closest_fruit = min([dist(head, s) for s in state.fruits_locations])  # range:[1, sqrt(2)*height]
+    num_of_possible_fruits = len([dist(head, s) < remaining_turns for s in state.fruits_locations])  # range:[0, fruits]
+    dist_to_closest_opp = min([dist(head, s.head) for s in state.snakes if s.index != player_index] + [area])  # range:[1, sqrt(2)*height]
+    stay_straight = min([dist(head, s) for s in state.snakes[player_index].position[0:int(length/2)]])  # range:[1, length/2]
+    dist_to_closest_border = min([dist(head, border) for border in close_borders])  # range:[0, height/2]
+
+    return length + \
+           (1 - dist_to_closest_fruit/(height*2**0.5)) + \
+           1.1*(1 - remaining_turns/total_turns)*(1 - num_of_possible_fruits / total_fruits) + \
+           1.5*(1 - remaining_turns/total_turns)*(dist_to_closest_opp / (height*2**0.5)) + \
+           0.5*max((length/total_fruits - 3), 0.1)*(stay_straight/(length/2)) + \
+           0.5*max((length/total_fruits - 3), 0.01)*(dist_to_closest_border/(height/2))
 
 
 class MinimaxAgent(Player):
