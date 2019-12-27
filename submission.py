@@ -32,7 +32,7 @@ def heuristic(state: GameState, player_index: int) -> float:
     dist_to_closest_fruit = min([dist(head, s) for s in state.fruits_locations + [(height**2, height**2)] if danger(state.snakes[player_index].position, s) < 3])  # range:[1, sqrt(2)*height]
     num_of_possible_fruits = len([dist(head, s) < remaining_turns for s in state.fruits_locations])  # range:[0, fruits]
     dist_to_closest_opp = min([(dist(head, s.tail_position) + dist(head, s.head))/2 for s in state.snakes if s.index != player_index] + [area])  # range:[1, sqrt(2)*height]
-    stay_straight = min([dist(head, s) for s in state.snakes[player_index].position[0:int(length/2)]])  # range:[1, length/2]
+    stay_straight = min([dist(head, s) for s in state.snakes[player_index].position[int(length/2)-1:int(length/2)+1]])  # range:[1, length/2]
     dist_to_closest_border = min([dist(head, border) for border in close_borders])  # range:[0, height/2]
 
     return length + \
