@@ -12,10 +12,11 @@ def heuristic(state: GameState, player_index: int) -> float:
     state.snakes array as well.
     :return:
     """
-    if not state.snakes[player_index].alive or len(state.fruits_locations) == 0:
+    if not state.snakes[player_index].alive:
         return state.snakes[player_index].length
 
     dist = lambda snake, fruit: ((snake[0] - fruit[0]) ** 2 + (snake[1] - fruit[1]) ** 2) ** 0.5
+    danger = lambda positions, fruit: ((fruit[0]-1, fruit[1]) in positions) + ((fruit[0]+1, fruit[1]) in positions) + ((fruit[0], fruit[1]-1) in positions) + ((fruit[0], fruit[1]+1) in positions)
     length = state.snakes[player_index].length
     head = state.snakes[player_index].head
     tail = state.snakes[player_index].tail_position
@@ -25,20 +26,20 @@ def heuristic(state: GameState, player_index: int) -> float:
     close_borders = [(height-1, head[1]), (head[0], width-1), (head[0], 0), (0, head[1])]
     remaining_turns = state.game_duration_in_turns - state.turn_number + 1  # +1 to prevent divide by zero
     total_turns = state.game_duration_in_turns
-    total_fruits = len(state.fruits_locations)
+    total_fruits = len(state.fruits_locations) + 1
 
-    dist_to_closest_fruit = min([dist(head, s) for s in state.fruits_locations])  # range:[1, sqrt(2)*height]
+    dist_to_closest_fruit = min([dist(head, s) for s in state.fruits_locations + [(height**2, height**2)] if danger(state.snakes[player_index].position, s) < 3])  # range:[1, sqrt(2)*height]
     num_of_possible_fruits = len([dist(head, s) < remaining_turns for s in state.fruits_locations])  # range:[0, fruits]
-    dist_to_closest_opp = min([dist(head, s.head) for s in state.snakes if s.index != player_index] + [area])  # range:[1, sqrt(2)*height]
+    dist_to_closest_opp = min([(dist(head, s.tail_position) + dist(head, s.head))/2 for s in state.snakes if s.index != player_index] + [area])  # range:[1, sqrt(2)*height]
     stay_straight = min([dist(head, s) for s in state.snakes[player_index].position[0:int(length/2)]])  # range:[1, length/2]
     dist_to_closest_border = min([dist(head, border) for border in close_borders])  # range:[0, height/2]
 
     return length + \
            (1 - dist_to_closest_fruit/(height*2**0.5)) + \
            1.1*(1 - remaining_turns/total_turns)*(1 - num_of_possible_fruits / total_fruits) + \
-           1.5*(1 - remaining_turns/total_turns)*(dist_to_closest_opp / (height*2**0.5)) + \
-           0.5*max((length/total_fruits - 3), 0.1)*(stay_straight/(length/2)) + \
-           0.5*max((length/total_fruits - 3), 0.01)*(dist_to_closest_border/(height/2))
+           0.6*(1 - remaining_turns/total_turns)*(dist_to_closest_opp / (height*2**0.5)) + \
+           0.6 * max(((length / total_fruits) - 3), 0.1) * (stay_straight / (length / 2)) + \
+           0.6*max(((length/total_fruits) - 3), 0.01)*(dist_to_closest_border/(height/2))
 
 
 class MinimaxAgent(Player):
@@ -90,7 +91,40 @@ def SAHC_sideways():
     3) print the best moves vector you found.
     :return:
     """
-    pass
+    n = 50
+    actions = np.asarray(list(GameAction))
+    current = np.random.choice(actions, size=n)
+    sideways = 0
+    for i in range(1, n):
+        best_val = -np.inf
+        best_states = []
+        for action in actions:
+            if current[i] == action:
+                continue
+            new = current
+            new[i] = action
+            new_val = get_fitness(tuple(new))
+            if new_val > best_val:
+                best_val = new_val
+                best_states = [new]
+            elif new_val == best_val:
+                best_states.append(new)
+        if best_val > get_fitness(tuple(current)):
+            random_index = np.random.choice(len(best_states))
+            current = best_states[random_index]
+            sideways = 0
+        elif best_val == get_fitness(tuple(current)) and sideways < np.inf:
+            random_index = np.random.choice(len(best_states))
+            current = best_states[random_index]
+            sideways += 1
+        else:
+            print("Found max before exhaustion")
+            print("Current fitness = " + str(get_fitness(tuple(current))))
+            print("Current move vector = " + str(current))
+            return
+    print("Found max")
+    print("Current fitness = " + str(get_fitness(tuple(current))))
+    print("Current move vector = " + str(current))
 
 
 def local_search():
