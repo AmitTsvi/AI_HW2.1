@@ -111,9 +111,9 @@ class MinimaxAgent(Player):
         state_rightAction = self.TurnBasedGameState(state, GameAction.RIGHT)
         state_straightAction = self.TurnBasedGameState(state, GameAction.STRAIGHT)
 
-        value_leftAction = self.MinMax_calc(state_leftAction, d)
-        value_rightAction= self.MinMax_calc(state_rightAction, d)
-        value_straightAction = self.MinMax_calc(state_straightAction, d)
+        value_leftAction = self.MinMax_calc(state_leftAction, d-1)
+        value_rightAction= self.MinMax_calc(state_rightAction, d-1)
+        value_straightAction = self.MinMax_calc(state_straightAction, d-1)
 
         if value_leftAction > value_rightAction:
             if value_leftAction > value_straightAction:
@@ -182,9 +182,9 @@ class AlphaBetaAgent(MinimaxAgent):
         state_rightAction = self.TurnBasedGameState(state, GameAction.RIGHT)
         state_straightAction = self.TurnBasedGameState(state, GameAction.STRAIGHT)
 
-        value_leftAction = self.AlphaBeta_calc(state_leftAction, d, Alpha, Beta)
-        value_rightAction= self.AlphaBeta_calc(state_rightAction, d, Alpha, Beta)
-        value_straightAction = self.AlphaBeta_calc(state_straightAction, d, Alpha, Beta)
+        value_leftAction = self.AlphaBeta_calc(state_leftAction, d-1, Alpha, Beta)
+        value_rightAction= self.AlphaBeta_calc(state_rightAction, d-1, Alpha, Beta)
+        value_straightAction = self.AlphaBeta_calc(state_straightAction, d-1, Alpha, Beta)
 
         if value_leftAction > value_rightAction:
             if value_leftAction > value_straightAction:
