@@ -73,7 +73,6 @@ class MinimaxAgent(Player):
             return heuristic(state.game_state, self.player_index)
         # our agent turn
         if state.turn == self.Turn.AGENT_TURN:
-            d = d - 1
             currMax = -np.inf
             for action in state.game_state.get_possible_actions(player_index=self.player_index):
                 #next_state = get_next_state(state.game_state, state.game_state.get_possible_actions_dicts_given_action(state.agent_action, player_index=self.player_index)[self.player_index])
@@ -89,6 +88,7 @@ class MinimaxAgent(Player):
 
         else:
             # the OPPONENTS turn
+            d = d - 1
             currMin = np.inf
             for opponents_actions in state.game_state.get_possible_actions_dicts_given_action(state.agent_action, player_index=self.player_index):
                 opponents_actions[self.player_index] = state.agent_action  # ?
@@ -109,9 +109,9 @@ class MinimaxAgent(Player):
         state_rightAction = self.TurnBasedGameState(state, GameAction.RIGHT)
         state_straightAction = self.TurnBasedGameState(state, GameAction.STRAIGHT)
 
-        value_leftAction = self.MinMax_calc(state_leftAction, d-1)
-        value_rightAction= self.MinMax_calc(state_rightAction, d-1)
-        value_straightAction = self.MinMax_calc(state_straightAction, d-1)
+        value_leftAction = self.MinMax_calc(state_leftAction, d)
+        value_rightAction= self.MinMax_calc(state_rightAction, d)
+        value_straightAction = self.MinMax_calc(state_straightAction, d)
 
         if value_leftAction > value_rightAction:
             if value_leftAction > value_straightAction:
@@ -134,7 +134,6 @@ class AlphaBetaAgent(MinimaxAgent):
             return heuristic(state.game_state, self.player_index)
         # our agent turn
         if state.turn == self.Turn.AGENT_TURN:
-            d = d - 1
             currMax = -np.inf
             for action in state.game_state.get_possible_actions(player_index=self.player_index):
                 #next_state = get_next_state(state.game_state, state.game_state.get_possible_actions_dicts_given_action(state.agent_action, player_index=self.player_index)[self.player_index])
@@ -152,6 +151,7 @@ class AlphaBetaAgent(MinimaxAgent):
                     return np.inf
             return currMax
         else:
+            d = d - 1
             # the OPPONENTS turn
             currMin = np.inf
             for opponents_actions in state.game_state.get_possible_actions_dicts_given_action(state.agent_action, player_index=self.player_index):
@@ -180,9 +180,9 @@ class AlphaBetaAgent(MinimaxAgent):
         state_rightAction = self.TurnBasedGameState(state, GameAction.RIGHT)
         state_straightAction = self.TurnBasedGameState(state, GameAction.STRAIGHT)
 
-        value_leftAction = self.AlphaBeta_calc(state_leftAction, d-1, Alpha, Beta)
-        value_rightAction= self.AlphaBeta_calc(state_rightAction, d-1, Alpha, Beta)
-        value_straightAction = self.AlphaBeta_calc(state_straightAction, d-1, Alpha, Beta)
+        value_leftAction = self.AlphaBeta_calc(state_leftAction, d, Alpha, Beta)
+        value_rightAction= self.AlphaBeta_calc(state_rightAction, d, Alpha, Beta)
+        value_straightAction = self.AlphaBeta_calc(state_straightAction, d, Alpha, Beta)
 
         if value_leftAction > value_rightAction:
             if value_leftAction > value_straightAction:
