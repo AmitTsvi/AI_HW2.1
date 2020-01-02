@@ -261,10 +261,74 @@ def local_search():
     pass
 
 
-class TournamentAgent(Player):
+class TournamentAgent(MinimaxAgent):
+    def AlphaBeta_calc(self, state: MinimaxAgent.TurnBasedGameState, d: int, Alpha: int, Beta: int) -> float:
+        # Leaf level or the depth is over - return heuristic (len(gameState.getLegalActions()) == 0? no need in run_game)
+        if d == 0:
+            return heuristic(state.game_state, self.player_index)
+        # our agent turn
+        if state.turn == self.Turn.AGENT_TURN:
+            currMax = -np.inf
+            for action in state.game_state.get_possible_actions(player_index=self.player_index):
+                #next_state = get_next_state(state.game_state, state.game_state.get_possible_actions_dicts_given_action(state.agent_action, player_index=self.player_index)[self.player_index])
+                # next_state = get_next_state(state.game_state, action)
+                next_state_TurnBasedGameState = self.TurnBasedGameState(state.game_state, action)
+                # will be sent again to the AlphaBeta_calc with our chosen action (the next turn is for OPPONENTS)
+                h_value = self.AlphaBeta_calc(next_state_TurnBasedGameState, d, Alpha, Beta)
+                # h_value = self._heuristic(next_state)
+                # if found a better score than currMax- update current max and max action that matches the current max
+                if h_value > currMax:
+                    currMax = h_value
+                Alpha = max(currMax, Alpha)
+                if currMax >= Beta:
+                    # pruning
+                    return np.inf
+            return currMax
+        else:
+            d = d - 1
+            # the OPPONENTS turn
+            currMin = np.inf
+            for opponents_actions in state.game_state.get_possible_actions_dicts_given_action(state.agent_action, player_index=self.player_index):
+                opponents_actions[self.player_index] = state.agent_action  # ?
+                next_state = get_next_state(state.game_state, opponents_actions)
+                # will be sent again to the AlphaBeta_calc with None (the next turn is for our agent)
+                next_state_TurnBasedGameState = self.TurnBasedGameState(next_state, None)
+                h_value = self.AlphaBeta_calc(next_state_TurnBasedGameState, d, Alpha, Beta)
+                # h_value = self._heuristic(next_state)
+                # if found a lower score than currMax- update current max and max action that matches the current max
+                if h_value < currMin:
+                    currMin = h_value
+                Beta = min(currMin, Beta)
+                if currMin <= Alpha:
+                    # pruning
+                    return -np.inf
+            return currMin
+
 
     def get_action(self, state: GameState) -> GameAction:
-        pass
+        d = 3
+        Alpha = -np.inf
+        Beta = np.inf
+
+        state_leftAction = self.TurnBasedGameState(state, GameAction.LEFT)
+        state_rightAction = self.TurnBasedGameState(state, GameAction.RIGHT)
+        state_straightAction = self.TurnBasedGameState(state, GameAction.STRAIGHT)
+
+        value_leftAction = self.AlphaBeta_calc(state_leftAction, d, Alpha, Beta)
+        value_rightAction= self.AlphaBeta_calc(state_rightAction, d, Alpha, Beta)
+        value_straightAction = self.AlphaBeta_calc(state_straightAction, d, Alpha, Beta)
+
+        if value_leftAction > value_rightAction:
+            if value_leftAction > value_straightAction:
+                return state_leftAction.agent_action
+        else:
+            if value_rightAction > value_straightAction:
+                return state_rightAction.agent_action
+        return state_straightAction.agent_action
+
+
+    def _heuristic(self, state: GameState) -> float:
+        return heuristic(state, self.player_index)
 
 
 if __name__ == '__main__':
