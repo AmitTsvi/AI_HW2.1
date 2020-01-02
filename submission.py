@@ -2,7 +2,7 @@ from environment import Player, GameState, GameAction, get_next_state
 from utils import get_fitness
 import numpy as np
 from enum import Enum
-
+import time
 
 
 def heuristic(state: GameState, player_index: int) -> float:
@@ -103,7 +103,8 @@ class MinimaxAgent(Player):
             return currMin
 
     def get_action(self, state: GameState) -> GameAction:
-        d = 3
+        start_time = time.time()
+        d = 4
 
         state_leftAction = self.TurnBasedGameState(state, GameAction.LEFT)
         state_rightAction = self.TurnBasedGameState(state, GameAction.RIGHT)
@@ -113,6 +114,7 @@ class MinimaxAgent(Player):
         value_rightAction= self.MinMax_calc(state_rightAction, d)
         value_straightAction = self.MinMax_calc(state_straightAction, d)
 
+        self.get_action_times.append(time.time() - start_time)
         if value_leftAction > value_rightAction:
             if value_leftAction > value_straightAction:
                 return state_leftAction.agent_action
@@ -172,7 +174,8 @@ class AlphaBetaAgent(MinimaxAgent):
 
 
     def get_action(self, state: GameState) -> GameAction:
-        d = 3
+        start_time = time.time()
+        d = 4
         Alpha = -np.inf
         Beta = np.inf
 
@@ -184,6 +187,7 @@ class AlphaBetaAgent(MinimaxAgent):
         value_rightAction= self.AlphaBeta_calc(state_rightAction, d, Alpha, Beta)
         value_straightAction = self.AlphaBeta_calc(state_straightAction, d, Alpha, Beta)
 
+        self.get_action_times.append(time.time() - start_time)
         if value_leftAction > value_rightAction:
             if value_leftAction > value_straightAction:
                 return state_leftAction.agent_action
@@ -192,9 +196,9 @@ class AlphaBetaAgent(MinimaxAgent):
                 return state_rightAction.agent_action
         return state_straightAction.agent_action
 
-
     def _heuristic(self, state: GameState) -> float:
         return heuristic(state, self.player_index)
+
 
 def SAHC_sideways():
     """
@@ -213,13 +217,13 @@ def SAHC_sideways():
     actions = np.asarray(list(GameAction))
     current = np.random.choice(actions, size=n)
     sideways = 0
-    for i in range(1, n):
+    for i in range(0, n):
         best_val = -np.inf
         best_states = []
         for action in actions:
             if current[i] == action:
                 continue
-            new = current
+            new = np.copy(current)
             new[i] = action
             new_val = get_fitness(tuple(new))
             if new_val > best_val:
@@ -229,20 +233,22 @@ def SAHC_sideways():
                 best_states.append(new)
         if best_val > get_fitness(tuple(current)):
             random_index = np.random.choice(len(best_states))
-            current = best_states[random_index]
+            current = np.copy(best_states[random_index])
             sideways = 0
         elif best_val == get_fitness(tuple(current)) and sideways < np.inf:
             random_index = np.random.choice(len(best_states))
-            current = best_states[random_index]
+            current = np.copy(best_states[random_index])
             sideways += 1
         else:
-            print("Found max before exhaustion")
-            print("Current fitness = " + str(get_fitness(tuple(current))))
-            print("Current move vector = " + str(current))
+            # print("Found max before exhaustion")
+            # print("Current fitness = " + str(get_fitness(tuple(current))))
+            # print("Current move vector = " + str(current))
+            print(str(current))
             return
-    print("Found max")
-    print("Current fitness = " + str(get_fitness(tuple(current))))
-    print("Current move vector = " + str(current))
+    # print("Found max")
+    # print("Current fitness = " + str(get_fitness(tuple(current))))
+    # print("Current move vector = " + str(current))
+    print(str(current))
 
 
 def local_search():
@@ -258,11 +264,38 @@ def local_search():
     3) print the best moves vector you found.
     :return:
     """
-    pass
+    n = 50
+    k = 5
+    actions = np.asarray(list(GameAction))
+    new_beam = np.random.choice(actions, size=(k, n))
+    while True:
+        beam = np.copy(new_beam)
+        improving_moves = set()
+        for i in range(0, k):
+            for j in range(0, n):
+                for action in actions:
+                    if beam[i][j] == action:
+                        continue
+                    new = np.copy(beam[i])
+                    new[j] = action
+                    delta = get_fitness(new) - get_fitness(beam[i])
+                    if delta > 0:
+                        improving_moves = improving_moves.union([(tuple(new), delta)])
+        if len(improving_moves) == 0:
+            sol = max([tuple(state) for state in np.transpose(beam)], key=get_fitness())
+            print("Found max")
+            print("Current fitness = " + str(get_fitness(sol)))
+            print("Current move vector = " + sol)
+            return
+        sum_probabilities = sum([move[1] for move in improving_moves])
+        new_beam = np.random.choice(improving_moves, size=k, p=[move[1]/sum_probabilities for move in improving_moves])
 
 
 class TournamentAgent(MinimaxAgent):
-    def AlphaBeta_calc(self, state: MinimaxAgent.TurnBasedGameState, d: int, Alpha: int, Beta: int) -> float:
+    remain_time = 60
+
+    def AlphaBeta_calc(self, state: MinimaxAgent.TurnBasedGameState, d: int, Alpha: int, Beta: int, remain_time: float) -> float:
+        start_time = time.time()
         # Leaf level or the depth is over - return heuristic (len(gameState.getLegalActions()) == 0? no need in run_game)
         if d == 0:
             return heuristic(state.game_state, self.player_index)
@@ -274,7 +307,9 @@ class TournamentAgent(MinimaxAgent):
                 # next_state = get_next_state(state.game_state, action)
                 next_state_TurnBasedGameState = self.TurnBasedGameState(state.game_state, action)
                 # will be sent again to the AlphaBeta_calc with our chosen action (the next turn is for OPPONENTS)
-                h_value = self.AlphaBeta_calc(next_state_TurnBasedGameState, d, Alpha, Beta)
+                if time.time() - start_time >= remain_time:
+                    return currMax
+                h_value = self.AlphaBeta_calc(next_state_TurnBasedGameState, d, Alpha, Beta, remain_time - (time.time() - start_time))
                 # h_value = self._heuristic(next_state)
                 # if found a better score than currMax- update current max and max action that matches the current max
                 if h_value > currMax:
@@ -293,7 +328,9 @@ class TournamentAgent(MinimaxAgent):
                 next_state = get_next_state(state.game_state, opponents_actions)
                 # will be sent again to the AlphaBeta_calc with None (the next turn is for our agent)
                 next_state_TurnBasedGameState = self.TurnBasedGameState(next_state, None)
-                h_value = self.AlphaBeta_calc(next_state_TurnBasedGameState, d, Alpha, Beta)
+                if time.time() - start_time >= remain_time:
+                    return currMin
+                h_value = self.AlphaBeta_calc(next_state_TurnBasedGameState, d, Alpha, Beta, remain_time - (time.time() - start_time))
                 # h_value = self._heuristic(next_state)
                 # if found a lower score than currMax- update current max and max action that matches the current max
                 if h_value < currMin:
@@ -304,8 +341,9 @@ class TournamentAgent(MinimaxAgent):
                     return -np.inf
             return currMin
 
-
     def get_action(self, state: GameState) -> GameAction:
+        time_for_move = self.remain_time / (state.game_duration_in_turns - state.turn_number)
+        start_time = time.time()
         d = 3
         Alpha = -np.inf
         Beta = np.inf
@@ -314,9 +352,11 @@ class TournamentAgent(MinimaxAgent):
         state_rightAction = self.TurnBasedGameState(state, GameAction.RIGHT)
         state_straightAction = self.TurnBasedGameState(state, GameAction.STRAIGHT)
 
-        value_leftAction = self.AlphaBeta_calc(state_leftAction, d, Alpha, Beta)
-        value_rightAction= self.AlphaBeta_calc(state_rightAction, d, Alpha, Beta)
-        value_straightAction = self.AlphaBeta_calc(state_straightAction, d, Alpha, Beta)
+        value_leftAction = self.AlphaBeta_calc(state_leftAction, d, Alpha, Beta, time_for_move/4)
+        value_rightAction= self.AlphaBeta_calc(state_rightAction, d, Alpha, Beta, time_for_move/4)
+        value_straightAction = self.AlphaBeta_calc(state_straightAction, d, Alpha, Beta, time_for_move/4)
+
+        self.remain_time = self.remain_time - (time.time() - start_time)
 
         if value_leftAction > value_rightAction:
             if value_leftAction > value_straightAction:
@@ -325,7 +365,6 @@ class TournamentAgent(MinimaxAgent):
             if value_rightAction > value_straightAction:
                 return state_rightAction.agent_action
         return state_straightAction.agent_action
-
 
     def _heuristic(self, state: GameState) -> float:
         return heuristic(state, self.player_index)
