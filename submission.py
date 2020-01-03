@@ -1,3 +1,5 @@
+import random
+
 from environment import Player, GameState, GameAction, get_next_state
 from utils import get_fitness
 import numpy as np
@@ -92,7 +94,7 @@ class MinimaxAgent(Player):
             currMin = np.inf
             for opponents_actions in state.game_state.get_possible_actions_dicts_given_action(state.agent_action, player_index=self.player_index):
                 opponents_actions[self.player_index] = state.agent_action  # ?
-                next_state = get_next_state(state.game_state, opponents_actions) # נשלח שוב למינימקס עד לעומק הרצוי, וחוזר לשלנו ב-NONE
+                next_state = get_next_state(state.game_state, opponents_actions)
                 next_state_TurnBasedGameState = self.TurnBasedGameState(next_state, None)
                 # will be sent again to the MinMax_calc with None (the next turn is for our agent)
                 h_value = self.MinMax_calc(next_state_TurnBasedGameState, d)
@@ -104,7 +106,7 @@ class MinimaxAgent(Player):
 
     def get_action(self, state: GameState) -> GameAction:
         start_time = time.time()
-        d = 4
+        d = 3
 
         state_leftAction = self.TurnBasedGameState(state, GameAction.LEFT)
         state_rightAction = self.TurnBasedGameState(state, GameAction.RIGHT)
@@ -114,7 +116,7 @@ class MinimaxAgent(Player):
         value_rightAction= self.MinMax_calc(state_rightAction, d)
         value_straightAction = self.MinMax_calc(state_straightAction, d)
 
-        self.get_action_times.append(time.time() - start_time)
+        # self.get_action_times.append(time.time() - start_time)
         if value_leftAction > value_rightAction:
             if value_leftAction > value_straightAction:
                 return state_leftAction.agent_action
@@ -175,7 +177,7 @@ class AlphaBetaAgent(MinimaxAgent):
 
     def get_action(self, state: GameState) -> GameAction:
         start_time = time.time()
-        d = 4
+        d = 3
         Alpha = -np.inf
         Beta = np.inf
 
@@ -187,7 +189,7 @@ class AlphaBetaAgent(MinimaxAgent):
         value_rightAction= self.AlphaBeta_calc(state_rightAction, d, Alpha, Beta)
         value_straightAction = self.AlphaBeta_calc(state_straightAction, d, Alpha, Beta)
 
-        self.get_action_times.append(time.time() - start_time)
+        # self.get_action_times.append(time.time() - start_time)
         if value_leftAction > value_rightAction:
             if value_leftAction > value_straightAction:
                 return state_leftAction.agent_action
@@ -268,7 +270,8 @@ def local_search():
     k = 5
     actions = np.asarray(list(GameAction))
     new_beam = np.random.choice(actions, size=(k, n))
-    while True:
+    iterations = 0
+    for it in range(0, 3):
         beam = np.copy(new_beam)
         improving_moves = set()
         for i in range(0, k):
@@ -276,19 +279,31 @@ def local_search():
                 for action in actions:
                     if beam[i][j] == action:
                         continue
+                    iterations += 1
                     new = np.copy(beam[i])
                     new[j] = action
-                    delta = get_fitness(new) - get_fitness(beam[i])
+                    delta = get_fitness(tuple(new)) - get_fitness(tuple(beam[i]))
                     if delta > 0:
                         improving_moves = improving_moves.union([(tuple(new), delta)])
         if len(improving_moves) == 0:
-            sol = max([tuple(state) for state in np.transpose(beam)], key=get_fitness())
-            print("Found max")
-            print("Current fitness = " + str(get_fitness(sol)))
-            print("Current move vector = " + sol)
+            sol = max([tuple(state) for state in beam], key=get_fitness)
+            # print("Found max without before resource finished")
+            # print("Current fitness = " + str(get_fitness(sol)))
+            # print("interations" + str(iterations))
+            # print("Current move vector = " + str(sol))
+            print(str(sol))
             return
-        sum_probabilities = sum([move[1] for move in improving_moves])
-        new_beam = np.random.choice(improving_moves, size=k, p=[move[1]/sum_probabilities for move in improving_moves])
+        improving_move_list = list(improving_moves)
+        sum_probabilities = sum([move[1] for move in improving_move_list])
+        new_beam_indices = np.random.choice(len(improving_moves), size=k, p=[move[1]/sum_probabilities for move in improving_move_list])
+        new_beam = [improving_move_list[i][0] for i in new_beam_indices]
+    sol = max([tuple(state) for state in beam], key=get_fitness)
+    # print("Found max")
+    # print("Current fitness = " + str(get_fitness(sol)))
+    # print("interations" + str(iterations))
+    # print("Current move vector = " + str(sol))
+    print(str(sol))
+    return
 
 
 class TournamentAgent(MinimaxAgent):
